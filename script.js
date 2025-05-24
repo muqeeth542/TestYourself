@@ -8,17 +8,36 @@ class QuizApp {
         this.timeLeft = 30;
         this.timer = null;
         this.isAnswered = false;
+        this.studentData = null;
+        this.quizStartTime = null;
+        this.quizEndTime = null;
+        this.isAdminAuthenticated = false;
+        
+        // Admin credentials
+        this.adminCredentials = {
+            name: "Mohammed Abdul Muqeeth",
+            id: "12402988",
+            email: "muqeethm2009@gmail.com"
+        };
         
         this.initializeElements();
         this.bindEvents();
+        this.checkAdminSession();
     }
 
     initializeElements() {
         // Screen elements
+        this.loginScreen = document.getElementById('login-screen');
         this.startScreen = document.getElementById('start-screen');
         this.quizScreen = document.getElementById('quiz-screen');
         this.resultScreen = document.getElementById('result-screen');
         this.reviewScreen = document.getElementById('review-screen');
+        
+        // Login elements
+        this.loginForm = document.getElementById('login-form');
+        this.studentNameInput = document.getElementById('student-name');
+        this.studentIdInput = document.getElementById('student-id');
+        this.studentEmailInput = document.getElementById('student-email');
         
         // Quiz elements
         this.questionText = document.getElementById('question-text');
@@ -40,9 +59,23 @@ class QuizApp {
         
         // Review elements
         this.reviewContainer = document.getElementById('review-container');
+        
+        // Admin elements
+        this.adminToggle = document.getElementById('admin-toggle');
+        this.adminContent = document.getElementById('admin-content');
+        this.recordsTable = document.getElementById('records-table');
+        this.adminAuthModal = document.getElementById('admin-auth-modal');
+        this.adminAuthForm = document.getElementById('admin-auth-form');
+        this.authError = document.getElementById('auth-error');
     }
 
     bindEvents() {
+        // Login form
+        this.loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleLogin();
+        });
+
         // Unit selection buttons
         document.querySelectorAll('.unit-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -74,9 +107,262 @@ class QuizApp {
             this.showReview();
         });
 
+        document.getElementById('download-report').addEventListener('click', () => {
+            this.downloadReport();
+        });
+
         document.getElementById('back-to-results').addEventListener('click', () => {
             this.showResults();
         });
+
+        // Admin panel events
+        this.adminToggle.addEventListener('click', () => {
+            this.handleAdminToggle();
+        });
+
+        // Admin authentication modal
+        this.adminAuthForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.authenticateAdmin();
+        });
+
+        document.querySelector('.close').addEventListener('click', () => {
+            this.adminAuthModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', (e) => {
+            if (e.target === this.adminAuthModal) {
+                this.adminAuthModal.style.display = 'none';
+            }
+        });
+
+        // Admin control buttons
+        document.getElementById('export-csv').addEventListener('click', () => {
+            this.exportRecordsCSV();
+        });
+
+        document.getElementById('clear-records').addEventListener('click', () => {
+            this.clearAllRecords();
+        });
+
+        document.getElementById('export-detailed').addEventListener('click', () => {
+            this.exportDetailedReport();
+        });
+
+        document.getElementById('admin-logout').addEventListener('click', () => {
+            this.logoutAdmin();
+        });
+    }
+
+    checkAdminSession() {
+        const adminSession = localStorage.getItem('adminSession');
+        if (adminSession) {
+            const session = JSON.parse(adminSession);
+            const now = new Date().getTime();
+            // Session expires after 24 hours
+            if (now - session.timestamp < 24 * 60 * 60 * 1000) {
+                this.isAdminAuthenticated = true;
+                this.updateAdminUI();
+            } else {
+                localStorage.removeItem('adminSession');
+            }
+        }
+    }
+
+    handleAdminToggle() {
+        if (!this.isAdminAuthenticated) {
+            this.adminAuthModal.style.display = 'block';
+        } else {
+            this.toggleAdminPanel();
+        }
+    }
+
+    authenticateAdmin() {
+        const name = document.getElementById('admin-name').value.trim();
+        const id = document.getElementById('admin-id').value.trim();
+        const email = document.getElementById('admin-email').value.trim();
+
+        if (name === this.adminCredentials.name && 
+            id === this.adminCredentials.id && 
+            email === this.adminCredentials.email) {
+            
+            this.isAdminAuthenticated = true;
+            
+            // Store session
+            const session = {
+                timestamp: new Date().getTime(),
+                admin: name
+            };
+            localStorage.setItem('adminSession', JSON.stringify(session));
+            
+            this.adminAuthModal.style.display = 'none';
+            this.updateAdminUI();
+            this.toggleAdminPanel();
+            
+            // Clear form
+            this.adminAuthForm.reset();
+            this.authError.style.display = 'none';
+        } else {
+            this.authError.textContent = 'Invalid credentials. Access denied.';
+            this.authError.style.display = 'block';
+        }
+    }
+
+    updateAdminUI() {
+        if (this.isAdminAuthenticated) {
+            document.getElementById('admin-user-info').textContent = this.adminCredentials.name;
+        }
+    }
+
+    logoutAdmin() {
+        this.isAdminAuthenticated = false;
+        localStorage.removeItem('adminSession');
+        this.adminContent.classList.remove('active');
+        document.getElementById('admin-user-info').textContent = '';
+    }
+
+    toggleAdminPanel() {
+        if (!this.isAdminAuthenticated) return;
+        
+        this.adminContent.classList.toggle('active');
+        if (this.adminContent.classList.contains('active')) {
+            this.loadStoredRecords();
+            this.updateStatistics();
+        }
+    }
+
+    updateStatistics() {
+        const records = JSON.parse(localStorage.getItem('quizRecords') || '[]');
+        
+        // Total attempts
+        document.getElementById('total-attempts').textContent = records.length;
+        
+        // Average score
+        if (records.length > 0) {
+            const avgScore = records.reduce((sum, record) => sum + record.percentage, 0) / records.length;
+            document.getElementById('average-score').textContent = Math.round(avgScore) + '%';
+        } else {
+            document.getElementById('average-score').textContent = '0%';
+        }
+        
+        // Unique students
+        const uniqueStudents = new Set(records.map(record => record.studentId)).size;
+        document.getElementById('unique-students').textContent = uniqueStudents;
+    }
+
+    exportDetailedReport() {
+        if (!this.isAdminAuthenticated) return;
+        
+        const records = JSON.parse(localStorage.getItem('quizRecords') || '[]');
+        if (records.length === 0) {
+            alert('No records to export');
+            return;
+        }
+
+        let reportContent = `
+PEL121 Communication Skills I - Detailed Admin Report
+===================================================
+Generated on: ${new Date().toLocaleString()}
+Total Records: ${records.length}
+
+SUMMARY STATISTICS:
+==================
+`;
+
+        // Calculate statistics
+        const totalAttempts = records.length;
+        const avgScore = records.reduce((sum, r) => sum + r.percentage, 0) / totalAttempts;
+        const uniqueStudents = new Set(records.map(r => r.studentId)).size;
+        const unitStats = {};
+
+        records.forEach(record => {
+            if (!unitStats[record.unit]) {
+                unitStats[record.unit] = { attempts: 0, totalScore: 0 };
+            }
+            unitStats[record.unit].attempts++;
+            unitStats[record.unit].totalScore += record.percentage;
+        });
+
+        reportContent += `
+- Total Attempts: ${totalAttempts}
+- Unique Students: ${uniqueStudents}
+- Average Score: ${Math.round(avgScore)}%
+- Best Performance: ${Math.max(...records.map(r => r.percentage))}%
+- Lowest Performance: ${Math.min(...records.map(r => r.percentage))}%
+
+UNIT-WISE PERFORMANCE:
+=====================
+`;
+
+        Object.entries(unitStats).forEach(([unit, stats]) => {
+            const avgUnitScore = stats.totalScore / stats.attempts;
+            reportContent += `
+${this.formatUnitName(unit)}:
+  - Attempts: ${stats.attempts}
+  - Average Score: ${Math.round(avgUnitScore)}%
+`;
+        });
+
+        reportContent += `
+
+DETAILED RECORDS:
+================
+`;
+
+        records.forEach((record, index) => {
+            reportContent += `
+${index + 1}. Student: ${record.studentName} (ID: ${record.studentId})
+   Email: ${record.email}
+   Date: ${record.date}
+   Unit: ${this.formatUnitName(record.unit)}
+   Score: ${record.score}/${record.totalQuestions} (${record.percentage}%)
+   Duration: ${Math.floor(record.duration / 60)}:${(record.duration % 60).toString().padStart(2, '0')}
+   Start Time: ${new Date(record.startTime).toLocaleString()}
+   End Time: ${new Date(record.endTime).toLocaleString()}
+   
+   Question-by-Question Analysis:
+`;
+
+            record.userAnswers.forEach((answer, qIndex) => {
+                reportContent += `   Q${qIndex + 1}: ${answer.correct ? 'CORRECT' : 'INCORRECT'} (Time: ${answer.timeSpent}s)\n`;
+            });
+            
+            reportContent += '\n' + '='.repeat(80) + '\n';
+        });
+
+        const blob = new Blob([reportContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `PEL121_Detailed_Admin_Report_${new Date().toISOString().split('T')[0]}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // All other existing methods remain the same...
+    handleLogin() {
+        const name = this.studentNameInput.value.trim();
+        const id = this.studentIdInput.value.trim();
+        const email = this.studentEmailInput.value.trim();
+
+        if (!name || !id || !email) {
+            alert('Please fill in all fields');
+            return;
+        }
+
+        this.studentData = {
+            name: name,
+            id: id,
+            email: email,
+            loginTime: new Date().toISOString()
+        };
+
+        document.getElementById('welcome-name').textContent = name;
+        document.getElementById('welcome-id').textContent = id;
+
+        this.showScreen('start-screen');
     }
 
     startQuiz() {
@@ -84,6 +370,11 @@ class QuizApp {
         this.currentQuestionIndex = 0;
         this.score = 0;
         this.userAnswers = [];
+        this.quizStartTime = new Date();
+        
+        document.getElementById('quiz-student-name').textContent = this.studentData.name;
+        document.getElementById('quiz-student-id').textContent = this.studentData.id;
+        
         this.showScreen('quiz-screen');
         this.displayQuestion();
         this.startTimer();
@@ -115,10 +406,8 @@ class QuizApp {
         const question = this.questions[this.currentQuestionIndex];
         this.isAnswered = false;
         
-        // Update question text
         this.questionText.textContent = question.question;
         
-        // Update options
         this.optionButtons.forEach((btn, index) => {
             const optionKey = Object.keys(question.options)[index];
             btn.textContent = `${optionKey}. ${question.options[optionKey]}`;
@@ -127,30 +416,23 @@ class QuizApp {
             btn.disabled = false;
         });
         
-        // Clear feedback and hide next button
         this.feedback.textContent = '';
         this.feedback.className = 'feedback';
         this.nextBtn.style.display = 'none';
         
-        // Update progress
         this.updateProgress();
-        
-        // Reset timer
         this.resetTimer();
     }
 
     selectOption(selectedBtn) {
         if (this.isAnswered) return;
         
-        // Remove previous selections
         this.optionButtons.forEach(btn => {
             btn.classList.remove('selected');
         });
         
-        // Mark selected option
         selectedBtn.classList.add('selected');
         
-        // Check answer after a short delay for better UX
         setTimeout(() => {
             this.checkAnswer(selectedBtn.dataset.option);
         }, 300);
@@ -163,7 +445,6 @@ class QuizApp {
         const question = this.questions[this.currentQuestionIndex];
         const isCorrect = selectedOption === question.correct;
         
-        // Store user answer
         this.userAnswers.push({
             question: question,
             userAnswer: selectedOption,
@@ -171,12 +452,10 @@ class QuizApp {
             timeSpent: 30 - this.timeLeft
         });
         
-        // Update score
         if (isCorrect) {
             this.score++;
         }
         
-        // Show correct/incorrect styling
         this.optionButtons.forEach(btn => {
             btn.disabled = true;
             if (btn.dataset.option === question.correct) {
@@ -186,13 +465,9 @@ class QuizApp {
             }
         });
         
-        // Show feedback
         this.showFeedback(isCorrect, question.explanation);
-        
-        // Update score display
         this.scoreDisplay.textContent = `Score: ${this.score}`;
         
-        // Show next button
         this.nextBtn.style.display = 'block';
         this.nextBtn.textContent = this.currentQuestionIndex === this.questions.length - 1 ? 'Finish Quiz' : 'Next Question';
     }
@@ -211,8 +486,14 @@ class QuizApp {
         if (this.currentQuestionIndex < this.questions.length) {
             this.displayQuestion();
         } else {
-            this.showResults();
+            this.finishQuiz();
         }
+    }
+
+    finishQuiz() {
+        this.quizEndTime = new Date();
+        this.saveQuizRecord();
+        this.showResults();
     }
 
     updateProgress() {
@@ -236,11 +517,15 @@ class QuizApp {
             if (this.timeLeft <= 0) {
                 this.timeUp();
             }
-        }, 1000);
+        }, 1500); // 2x speed
     }
 
     updateTimerDisplay() {
         this.timerDisplay.textContent = `Time: ${this.timeLeft}s`;
+        this.timerDisplay.className = 'timer-2x';
+        if (this.timeLeft <= 10) {
+            this.timerDisplay.classList.add('warning');
+        }
     }
 
     resetTimer() {
@@ -258,8 +543,79 @@ class QuizApp {
 
     timeUp() {
         if (!this.isAnswered) {
-            this.checkAnswer(''); // Empty answer for timeout
+            this.checkAnswer('');
         }
+    }
+
+    saveQuizRecord() {
+        const record = {
+            id: Date.now(),
+            studentName: this.studentData.name,
+            studentId: this.studentData.id,
+            email: this.studentData.email,
+            unit: this.selectedUnit,
+            score: this.score,
+            totalQuestions: this.questions.length,
+            percentage: Math.round((this.score / this.questions.length) * 100),
+            startTime: this.quizStartTime.toISOString(),
+            endTime: this.quizEndTime.toISOString(),
+            duration: Math.round((this.quizEndTime - this.quizStartTime) / 1000),
+            date: new Date().toLocaleDateString(),
+            userAnswers: this.userAnswers
+        };
+
+        let records = JSON.parse(localStorage.getItem('quizRecords') || '[]');
+        records.push(record);
+        localStorage.setItem('quizRecords', JSON.stringify(records));
+    }
+
+    loadStoredRecords() {
+        if (!this.isAdminAuthenticated) return;
+        
+        const records = JSON.parse(localStorage.getItem('quizRecords') || '[]');
+        this.displayRecords(records);
+    }
+
+    displayRecords(records) {
+        if (records.length === 0) {
+            this.recordsTable.innerHTML = '<p>No records found.</p>';
+            return;
+        }
+
+        let tableHTML = `
+            <table class="records-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Student Name</th>
+                        <th>Student ID</th>
+                        <th>Email</th>
+                        <th>Unit</th>
+                        <th>Score</th>
+                        <th>Percentage</th>
+                        <th>Duration</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        records.forEach(record => {
+            tableHTML += `
+                <tr>
+                    <td>${record.date}</td>
+                    <td>${record.studentName}</td>
+                    <td>${record.studentId}</td>
+                    <td>${record.email}</td>
+                    <td>${this.formatUnitName(record.unit)}</td>
+                    <td>${record.score}/${record.totalQuestions}</td>
+                    <td>${record.percentage}%</td>
+                    <td>${Math.floor(record.duration / 60)}:${(record.duration % 60).toString().padStart(2, '0')}</td>
+                </tr>
+            `;
+        });
+
+        tableHTML += '</tbody></table>';
+        this.recordsTable.innerHTML = tableHTML;
     }
 
     showResults() {
@@ -268,13 +624,15 @@ class QuizApp {
         
         const percentage = Math.round((this.score / this.questions.length) * 100);
         
-        // Display final score
+        document.getElementById('result-student-name').textContent = this.studentData.name;
+        document.getElementById('result-student-id').textContent = this.studentData.id;
+        document.getElementById('result-date').textContent = new Date().toLocaleDateString();
+        
         this.finalScore.innerHTML = `
             <div>${this.score}/${this.questions.length}</div>
             <div style="font-size: 1.5rem; margin-top: 10px;">${percentage}%</div>
         `;
         
-        // Performance analysis
         let performance = '';
         if (percentage >= 90) performance = 'Excellent! Outstanding performance!';
         else if (percentage >= 80) performance = 'Very Good! Well done!';
@@ -287,9 +645,9 @@ class QuizApp {
             <p><strong>${performance}</strong></p>
             <p>You answered ${this.score} out of ${this.questions.length} questions correctly.</p>
             <p>Accuracy: ${percentage}%</p>
+            <p>Quiz Duration: ${Math.floor((this.quizEndTime - this.quizStartTime) / 60000)} minutes</p>
         `;
         
-        // Unit breakdown
         this.showUnitBreakdown();
     }
 
@@ -375,6 +733,87 @@ class QuizApp {
         this.reviewContainer.innerHTML = reviewHTML;
     }
 
+    downloadReport() {
+        const percentage = Math.round((this.score / this.questions.length) * 100);
+        const duration = Math.floor((this.quizEndTime - this.quizStartTime) / 60000);
+        
+        let reportContent = `
+PEL121 Communication Skills I - Quiz Report
+==========================================
+
+Student Information:
+- Name: ${this.studentData.name}
+- Student ID: ${this.studentData.id}
+- Email: ${this.studentData.email}
+- Date: ${new Date().toLocaleDateString()}
+
+Quiz Results:
+- Unit: ${this.formatUnitName(this.selectedUnit)}
+- Score: ${this.score}/${this.questions.length}
+- Percentage: ${percentage}%
+- Duration: ${duration} minutes
+
+Detailed Answers:
+`;
+
+        this.userAnswers.forEach((answer, index) => {
+            reportContent += `
+${index + 1}. ${answer.question.question}
+   Your Answer: ${answer.userAnswer || 'No answer'}
+   Correct Answer: ${answer.question.correct}
+   Result: ${answer.correct ? 'Correct' : 'Incorrect'}
+   Time Spent: ${answer.timeSpent}s
+`;
+        });
+
+        const blob = new Blob([reportContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Quiz_Report_${this.studentData.name}_${this.studentData.id}_${new Date().toISOString().split('T')[0]}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    exportRecordsCSV() {
+        if (!this.isAdminAuthenticated) return;
+        
+        const records = JSON.parse(localStorage.getItem('quizRecords') || '[]');
+        if (records.length === 0) {
+            alert('No records to export');
+            return;
+        }
+
+        let csvContent = 'Date,Student Name,Student ID,Email,Unit,Score,Total Questions,Percentage,Duration (minutes),Start Time,End Time\n';
+        
+        records.forEach(record => {
+            csvContent += `${record.date},"${record.studentName}","${record.studentId}","${record.email}","${this.formatUnitName(record.unit)}",${record.score},${record.totalQuestions},${record.percentage},${Math.floor(record.duration / 60)},${record.startTime},${record.endTime}\n`;
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Quiz_Records_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    clearAllRecords() {
+        if (!this.isAdminAuthenticated) return;
+        
+        if (confirm('Are you sure you want to clear all records? This action cannot be undone.')) {
+            localStorage.removeItem('quizRecords');
+            this.loadStoredRecords();
+            this.updateStatistics();
+            alert('All records have been cleared.');
+        }
+    }
+
     restartQuiz() {
         this.showScreen('start-screen');
     }
@@ -387,7 +826,7 @@ class QuizApp {
     }
 }
 
-// Initialize the quiz app when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     new QuizApp();
 });
+// Sample questions database
