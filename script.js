@@ -222,7 +222,7 @@ class QuizApp {
     }
 
     startTimer() {
-        this.timeLeft = 30;
+        this.timeLeft = 60;
         this.updateTimerDisplay();
         
         this.timer = setInterval(() => {
