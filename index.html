@@ -14,11 +14,34 @@
         </header>
 
         <div id="quiz-container">
-            <div id="start-screen" class="screen active">
-                <h2>Welcome to the Grammar Quiz!</h2>
+            <!-- Login Screen -->
+            <div id="login-screen" class="screen active">
+                <h2>Student Login</h2>
+                <form id="login-form" class="login-form">
+                    <div class="form-group">
+                        <label for="student-name">Student Name:</label>
+                        <input type="text" id="student-name" required placeholder="Enter your full name">
+                    </div>
+                    <div class="form-group">
+                        <label for="student-id">Student ID:</label>
+                        <input type="text" id="student-id" required placeholder="Enter your student ID">
+                    </div>
+                    <div class="form-group">
+                        <label for="student-email">Email:</label>
+                        <input type="email" id="student-email" required placeholder="Enter your email">
+                    </div>
+                    <button type="submit" class="login-btn">Start Quiz</button>
+                </form>
+            </div>
+
+            <div id="start-screen" class="screen">
+                <div class="student-info">
+                    <h3>Welcome, <span id="welcome-name"></span>!</h3>
+                    <p>Student ID: <span id="welcome-id"></span></p>
+                </div>
+                <h2>Select Your Quiz Unit</h2>
                 <p>Test your knowledge of Parts of Speech, Tenses, Modals, Articles, Active-Passive Voice, and Phrasal Verbs</p>
                 <div class="unit-selector">
-                    <h3>Select Quiz Unit:</h3>
                     <button class="unit-btn" data-unit="all">All Units (50 Questions)</button>
                     <button class="unit-btn" data-unit="parts-of-speech">Parts of Speech</button>
                     <button class="unit-btn" data-unit="tenses">Tenses</button>
@@ -31,13 +54,16 @@
 
             <div id="quiz-screen" class="screen">
                 <div class="quiz-header">
+                    <div class="student-header">
+                        <span id="quiz-student-name"></span> | <span id="quiz-student-id"></span>
+                    </div>
                     <div class="progress-bar">
                         <div id="progress" class="progress-fill"></div>
                     </div>
                     <div class="quiz-info">
                         <span id="question-counter">Question 1 of 10</span>
                         <span id="score-display">Score: 0</span>
-                        <span id="timer">Time: 30s</span>
+                        <span id="timer" class="timer-2x">Time: 30s</span>
                     </div>
                 </div>
 
@@ -56,12 +82,18 @@
 
             <div id="result-screen" class="screen">
                 <h2>Quiz Complete!</h2>
+                <div class="student-result-info">
+                    <p><strong>Student:</strong> <span id="result-student-name"></span></p>
+                    <p><strong>Student ID:</strong> <span id="result-student-id"></span></p>
+                    <p><strong>Date:</strong> <span id="result-date"></span></p>
+                </div>
                 <div id="final-score"></div>
                 <div id="performance-analysis"></div>
                 <div id="unit-breakdown"></div>
                 <div class="result-actions">
-                    <button id="restart-btn" class="action-btn">Take Quiz Again</button>
+                    <button id="restart-btn" class="action-btn">Take Another Quiz</button>
                     <button id="review-btn" class="action-btn">Review Answers</button>
+                    <button id="download-report" class="action-btn">Download Report</button>
                 </div>
             </div>
 
@@ -69,6 +101,62 @@
                 <h2>Answer Review</h2>
                 <div id="review-container"></div>
                 <button id="back-to-results" class="action-btn">Back to Results</button>
+            </div>
+
+            <!-- Admin Authentication Modal -->
+            <div id="admin-auth-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h3>Admin Authentication</h3>
+                    <form id="admin-auth-form">
+                        <div class="form-group">
+                            <label for="admin-name">Name:</label>
+                            <input type="text" id="admin-name" required placeholder="Enter admin name">
+                        </div>
+                        <div class="form-group">
+                            <label for="admin-id">ID:</label>
+                            <input type="text" id="admin-id" required placeholder="Enter admin ID">
+                        </div>
+                        <div class="form-group">
+                            <label for="admin-email">Email:</label>
+                            <input type="email" id="admin-email" required placeholder="Enter admin email">
+                        </div>
+                        <button type="submit" class="login-btn">Authenticate</button>
+                    </form>
+                    <div id="auth-error" class="error-message"></div>
+                </div>
+            </div>
+
+            <!-- Admin Panel -->
+            <div id="admin-panel" class="admin-panel">
+                <button id="admin-toggle" class="admin-toggle">📊 View Records</button>
+                <div id="admin-content" class="admin-content">
+                    <div class="admin-header">
+                        <h3>Student Attempt Records</h3>
+                        <p class="admin-info">Logged in as: <span id="admin-user-info"></span></p>
+                        <button id="admin-logout" class="admin-btn logout">Logout</button>
+                    </div>
+                    <div class="admin-controls">
+                        <button id="export-csv" class="admin-btn">Export CSV</button>
+                        <button id="clear-records" class="admin-btn danger">Clear All Records</button>
+                        <button id="export-detailed" class="admin-btn">Export Detailed Report</button>
+                    </div>
+                    <div class="stats-overview">
+                        <div class="stat-card">
+                            <h4>Total Attempts</h4>
+                            <span id="total-attempts">0</span>
+                        </div>
+                        <div class="stat-card">
+                            <h4>Average Score</h4>
+                            <span id="average-score">0%</span>
+                        </div>
+                        <div class="stat-card">
+                            <h4>Unique Students</h4>
+                            <span id="unique-students">0</span>
+                        </div>
+                    </div>
+                    <div id="records-table"></div>
+                </div>
             </div>
         </div>
     </div>
