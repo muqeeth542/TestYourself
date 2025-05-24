@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PEL121 Communication Skills I - Interactive Quiz</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>PEL121 Communication Skills I</h1>
+            <p>Interactive Grammar Quiz</p>
+        </header>
+
+        <div id="quiz-container">
+            <div id="start-screen" class="screen active">
+                <h2>Welcome to the Grammar Quiz!</h2>
+                <p>Test your knowledge of Parts of Speech, Tenses, Modals, Articles, Active-Passive Voice, and Phrasal Verbs</p>
+                <div class="unit-selector">
+                    <h3>Select Quiz Unit:</h3>
+                    <button class="unit-btn" data-unit="all">All Units (50 Questions)</button>
+                    <button class="unit-btn" data-unit="parts-of-speech">Parts of Speech</button>
+                    <button class="unit-btn" data-unit="tenses">Tenses</button>
+                    <button class="unit-btn" data-unit="modals">Modals</button>
+                    <button class="unit-btn" data-unit="articles">Articles</button>
+                    <button class="unit-btn" data-unit="active-passive">Active-Passive Voice</button>
+                    <button class="unit-btn" data-unit="phrasal-verbs">Phrasal Verbs</button>
+                </div>
+            </div>
+
+            <div id="quiz-screen" class="screen">
+                <div class="quiz-header">
+                    <div class="progress-bar">
+                        <div id="progress" class="progress-fill"></div>
+                    </div>
+                    <div class="quiz-info">
+                        <span id="question-counter">Question 1 of 10</span>
+                        <span id="score-display">Score: 0</span>
+                        <span id="timer">Time: 30s</span>
+                    </div>
+                </div>
+
+                <div id="question-container">
+                    <h3 id="question-text"></h3>
+                    <div id="options-container">
+                        <button class="option-btn" data-option="A"></button>
+                        <button class="option-btn" data-option="B"></button>
+                        <button class="option-btn" data-option="C"></button>
+                        <button class="option-btn" data-option="D"></button>
+                    </div>
+                    <div id="feedback" class="feedback"></div>
+                    <button id="next-btn" class="next-btn" style="display: none;">Next Question</button>
+                </div>
+            </div>
+
+            <div id="result-screen" class="screen">
+                <h2>Quiz Complete!</h2>
+                <div id="final-score"></div>
+                <div id="performance-analysis"></div>
+                <div id="unit-breakdown"></div>
+                <div class="result-actions">
+                    <button id="restart-btn" class="action-btn">Take Quiz Again</button>
+                    <button id="review-btn" class="action-btn">Review Answers</button>
+                </div>
+            </div>
+
+            <div id="review-screen" class="screen">
+                <h2>Answer Review</h2>
+                <div id="review-container"></div>
+                <button id="back-to-results" class="action-btn">Back to Results</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="questions.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
