@@ -5,7 +5,7 @@ class QuizApp {
         this.selectedUnit = 'all';
         this.questions = [];
         this.userAnswers = [];
-        this.timeLeft = 30;
+        this.timeLeft = 60;
         this.timer = null;
         this.isAnswered = false;
         this.studentData = null;
@@ -381,16 +381,18 @@ ${index + 1}. Student: ${record.studentName} (ID: ${record.studentId})
     }
 
     loadQuestions() {
-        if (this.selectedUnit === 'all') {
-            this.questions = [];
-            Object.values(questionsDatabase).forEach(unitQuestions => {
-                this.questions = this.questions.concat(unitQuestions);
-            });
-            this.questions = this.shuffleArray(this.questions).slice(0, 50);
-        } else {
-            this.questions = [...questionsDatabase[this.selectedUnit]];
-            this.questions = this.shuffleArray(this.questions);
-        }
+        if (this.selectedUnit === 'all' || this.selectedUnit === 'random40') {
+    this.questions = [];
+    Object.values(questionsDatabase).forEach(unitQuestions => {
+        this.questions = this.questions.concat(unitQuestions);
+    });
+    const total = this.selectedUnit === 'random40' ? 40 : 240;
+    this.questions = this.shuffleArray(this.questions).slice(0, total);
+} else {
+    this.questions = [...questionsDatabase[this.selectedUnit]];
+    this.questions = this.shuffleArray(this.questions);
+}
+
     }
 
     shuffleArray(array) {
@@ -403,6 +405,9 @@ ${index + 1}. Student: ${record.studentName} (ID: ${record.studentId})
     }
 
     displayQuestion() {
+        this.stopTimer(); // Make sure no overlapping timer
+this.startTimer(); // Then start fresh timer
+
         const question = this.questions[this.currentQuestionIndex];
         this.isAnswered = false;
         
@@ -439,38 +444,38 @@ ${index + 1}. Student: ${record.studentName} (ID: ${record.studentId})
     }
 
     checkAnswer(selectedOption) {
-        this.isAnswered = true;
-        this.stopTimer();
-        
-        const question = this.questions[this.currentQuestionIndex];
-        const isCorrect = selectedOption === question.correct;
-        
-        this.userAnswers.push({
-            question: question,
-            userAnswer: selectedOption,
-            correct: isCorrect,
-            timeSpent: 30 - this.timeLeft
-        });
-        
-        if (isCorrect) {
-            this.score++;
+    this.isAnswered = true;
+    this.stopTimer();
+
+    const question = this.questions[this.currentQuestionIndex];
+    const isCorrect = selectedOption === question.correct;
+
+    this.userAnswers.push({
+        question: question,
+        userAnswer: selectedOption || 'none',
+        correct: isCorrect,
+        timeSpent: 60 - this.timeLeft
+    });
+
+    // disable all buttons
+    this.optionButtons.forEach(btn => {
+        btn.disabled = true;
+        if (btn.dataset.option === question.correct) {
+            btn.classList.add('correct');
+        } else if (btn.dataset.option === selectedOption && !isCorrect) {
+            btn.classList.add('incorrect');
         }
-        
-        this.optionButtons.forEach(btn => {
-            btn.disabled = true;
-            if (btn.dataset.option === question.correct) {
-                btn.classList.add('correct');
-            } else if (btn.dataset.option === selectedOption && !isCorrect) {
-                btn.classList.add('incorrect');
-            }
-        });
-        
-        this.showFeedback(isCorrect, question.explanation);
-        this.scoreDisplay.textContent = `Score: ${this.score}`;
-        
-        this.nextBtn.style.display = 'block';
-        this.nextBtn.textContent = this.currentQuestionIndex === this.questions.length - 1 ? 'Finish Quiz' : 'Next Question';
-    }
+    });
+
+    this.showFeedback(isCorrect, question.explanation);
+    this.scoreDisplay.textContent = `Score: ${this.score}`;
+
+    this.nextBtn.style.display = 'block';
+    this.nextBtn.textContent = this.currentQuestionIndex === this.questions.length - 1
+        ? 'Finish Quiz'
+        : 'Next Question';
+}
+
 
     showFeedback(isCorrect, explanation) {
         this.feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
@@ -503,30 +508,34 @@ ${index + 1}. Student: ${record.studentName} (ID: ${record.studentId})
     }
 
     startTimer() {
-        this.timeLeft = 60;
-        this.updateTimerDisplay();
-        
-        this.timer = setInterval(() => {
+    this.stopTimer(); // ← Stops any existing timer
+
+    this.timeLeft = 60;
+    this.updateTimerDisplay();
+
+    this.timer = setInterval(() => {
+        if (this.timeLeft > 0) {
             this.timeLeft--;
             this.updateTimerDisplay();
-            
+
             if (this.timeLeft <= 10) {
                 this.timerDisplay.classList.add('warning');
             }
-            
-            if (this.timeLeft <= 0) {
-                this.timeUp();
-            }
-        }, 1500); // 2x speed
-    }
 
-    updateTimerDisplay() {
-        this.timerDisplay.textContent = `Time: ${this.timeLeft}s`;
-        this.timerDisplay.className = 'timer-2x';
-        if (this.timeLeft <= 10) {
-            this.timerDisplay.classList.add('warning');
+            if (this.timeLeft === 0) {
+                this.timeUp(); // auto-submit
+            }
         }
+    }, 1500);
+}
+
+  updateTimerDisplay() {
+    this.timerDisplay.textContent = `Time: ${this.timeLeft}s`;
+    this.timerDisplay.className = 'timer-2x';
+    if (this.timeLeft <= 10) {
+        this.timerDisplay.classList.add('warning');
     }
+}
 
     resetTimer() {
         this.stopTimer();
@@ -535,17 +544,18 @@ ${index + 1}. Student: ${record.studentName} (ID: ${record.studentId})
     }
 
     stopTimer() {
-        if (this.timer) {
-            clearInterval(this.timer);
-            this.timer = null;
-        }
+    if (this.timer) {
+        clearInterval(this.timer);
+        this.timer = null;
     }
+}
 
     timeUp() {
-        if (!this.isAnswered) {
-            this.checkAnswer('');
-        }
-    }
+    clearInterval(this.timer);
+    this.timer = null;
+    this.checkAnswer(null);
+}
+
 
     saveQuizRecord() {
         const record = {
